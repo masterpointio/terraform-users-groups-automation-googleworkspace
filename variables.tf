@@ -13,12 +13,11 @@ variable "users" {
     # external_ids
     family_name : string,
     given_name : string,
-    groups : optional(list(object({
-      group_id : string, # The value can be the group's email address, group alias, or the unique group ID.
-      delivery_settings : optional(string, "ALL_MAIL"),
+    groups : optional(map(object({
       role : optional(string, "MEMBER"),
+      delivery_settings : optional(string, "ALL_MAIL"),
       type : optional(string, "USER"),
-    }))),
+    })), {}),
     # ims
     include_in_global_address_list : optional(bool),
     ip_allowlist : optional(bool),
@@ -50,6 +49,8 @@ variable "users" {
     password : optional(string),
   }))
   default = {}
+
+  # validate primary email address
   validation {
     condition = alltrue(flatten([
       for user in var.users : [can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", user.primary_email))]
@@ -57,6 +58,7 @@ variable "users" {
     error_message = "Invalid primary email address"
   }
 
+  # validate password length
   validation {
     condition = alltrue(flatten([
       for user in var.users : [
@@ -66,12 +68,46 @@ variable "users" {
     error_message = "Password must be between 8 and 100 characters when provided"
   }
 
+  # validate hash function
   validation {
     condition = alltrue([
       for user in var.users :
-      user.password == null || (user.hash_function == "SHA-1" || user.hash_function == "MD5" || user.hash_function == "crypt")
+      user.password == null || (
+        user.password != null && (
+          user.hash_function == "SHA-1" ||
+          user.hash_function == "MD5" ||
+          user.hash_function == "crypt" ||
+          user.hash_function == null
+        )
+      )
     ])
-    error_message = "hash_function must be either 'SHA-1', 'MD5', or 'crypt' when password is provided"
+    error_message = "hash_function must be either 'SHA-1', 'MD5', 'crypt', or null when password is provided"
+  }
+
+  # validate group role
+  validation {
+    condition = alltrue(flatten([
+      for user in var.users : [
+        for group in values(try(user.groups, {})) : (
+          upper(group.role) == "MEMBER" || upper(group.role) == "OWNER" || upper(group.role) == "MANAGER"
+        )
+      ]
+    ]))
+    error_message = "group role must be either 'member', 'owner', or 'manager'"
+  }
+
+  # validate group member type
+  validation {
+    condition = alltrue(flatten([
+      for user in var.users : [
+        for group in values(try(user.groups, {})) : (
+          # # Check if type is null (default) or one of the allowed values
+          # group.type == null ? true : (upper(group.type) == "USER" || upper(group.type) == "GROUP" || upper(group.type) == "CUSTOMER")
+          group.type == null || contains(["USER", "GROUP", "CUSTOMER"], upper(group.type))
+        )
+      ]
+    ]))
+    error_message = "group type must be either 'USER', 'GROUP', or 'CUSTOMER'"
   }
 }
 
@@ -89,6 +125,35 @@ variable "groups" {
       create = null
       update = null
     }),
+    # https://registry.terraform.io/providers/hashicorp/googleworkspace/latest/docs/resources/group_settings
+    settings : optional(object({
+      allow_external_members : optional(bool),
+      allow_web_posting : optional(bool),
+      archive_only : optional(bool),
+      custom_footer_text : optional(string),
+      custom_reply_to : optional(string),
+      default_message_deny_notification_text : optional(string),
+      enable_collaborative_inbox : optional(bool),
+      include_custom_footer : optional(bool),
+      include_in_global_address_list : optional(bool),
+      is_archived : optional(bool),
+      members_can_post_as_the_group : optional(bool),
+      message_moderation_level : optional(string),
+      primary_language : optional(string),
+      reply_to : optional(string),
+      send_message_deny_notification : optional(bool),
+      spam_moderation_level : optional(string),
+      who_can_assist_content : optional(string),
+      who_can_contact_owner : optional(string),
+      who_can_discover_group : optional(string),
+      who_can_join : optional(string),
+      who_can_leave_group : optional(string),
+      who_can_moderate_content : optional(string),
+      who_can_moderate_members : optional(string),
+      who_can_post_message : optional(string),
+      who_can_view_group : optional(string),
+      who_can_view_membership : optional(string),
+    }), {}),
   }))
   default = {}
 
