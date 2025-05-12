@@ -1,6 +1,6 @@
 [![Banner][banner-image]](https://masterpoint.io/)
 
-# terraform-googleworkspace-users-groups-automation
+# terraform-users-groups-automation-googleworkspace
 
 [![Release][release-badge]][latest-release]
 
