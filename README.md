@@ -8,7 +8,7 @@
 
 ## Purpose and Functionality
 
-Use this [child module](https://www.terraform.io/docs/language/modules/#child-modules) to manage Google Workspace users, groups, and roles.
+Use this [child module](https://opentofu.org/docs/language/modules/#child-modules) to manage Google Workspace users, groups, and roles.
 
 If you want to use this module with an existing Google Workspace, see the [import-existing-org](examples/import-existing-org) example, which demonstrates how to import your existing Google users and groups.
 
